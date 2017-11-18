@@ -208,7 +208,7 @@ plt.savefig('plots/contribution_plot_dt_reg.png')
 ```
 <div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/contribution_plot_dt_reg.png"/></div>
 
-可以用 violin 画出这个特定鲍鱼与整个种群的各变量贡献值比较，下图中，可以看出这个特定鲍鱼壳重相较其他相比异常低，事实上，大部分鲍鱼的壳重的权重给出一个正的贡献值。
+可以用 violin 画出这个特定鲍鱼与整个种群的各变量贡献值比较，下图中，可以看出这个特定鲍鱼壳重相较其他相比异常低，事实上，大部分鲍鱼的壳重对应一个正的贡献值。
 ```
 df, true_label, score = plot_obs_feature_contrib(dt_reg,
                                                  dt_reg_contrib,
@@ -230,108 +230,113 @@ plt.savefig('plots/shell_weight_contribution_dt.png')
 ```
 <div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/shell_weight_contribution_dt.png"/></div>
 
+再来看看去壳重这个变量的贡献值具有非线性、非单调的特点。低的去壳重没有贡献，高的去壳重具有负的的贡献，而在低和高之间具有正的贡献。
+```
+plot_single_feat_contrib('shucked weight', dt_reg_contrib, X_test, class_index=1)
+plt.savefig('plots/shucked_weight_contribution_dt.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/shucked_weight_contribution_dt.png"/></div>
 
-* 分隔超平面：上述将数据集分割开来的直线叫做分隔超平面。
-* 超平面：如果数据集是N维的，那么就需要N-1维的某对象来对数据进行分割。该对象叫做超平面，也就是分类的决策边界。
-* 间隔：一个点到分割面的距离，称为点相对于分割面的距离。数据集中所有的点到分割面的最小间隔的2倍，称为分类器或数据集的间隔。
-* 最大间隔：SVM分类器是要找最大的数据集间隔。
-* 支持向量：离分割超平面最近的那些点
 
-sklearn的SVM里面会有一个属性support_vectors_，标示“支持向量”，也就是样本点里离超平面最近的点，组成的。
-咱们来画个图，把超平面和支持向量都画出来。
+## Section 2: 扩展到随机森林
+以上的过程都可以扩展到随机森林，看看变量在森林中所有树的平均贡献。
+```
+df, true_label, pred = plot_obs_feature_contrib(rf_reg,
+                                                rf_reg_contrib,
+                                                X_test,
+                                                y_test_reg,
+                                                3,
+                                                order_by='contribution'
+                                               )
+plt.tight_layout()
+plt.savefig('plots/contribution_plot_rf.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/contribution_plot_rf.png"/></div>
 
 ```
-plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap='spring')
-plot_svc_decision_function(clf)
-plt.scatter(clf.support_vectors_[:, 0], clf.support_vectors_[:, 1],
-            s=200, facecolors='none');
+df = plot_obs_feature_contrib(rf_reg,
+                              rf_reg_contrib,
+                              X_test,
+                              y_test_reg,
+                              3,
+                              order_by='contribution',
+                              violin=True
+                             )
+plt.tight_layout()
+plt.savefig('plots/contribution_plot_violin_rf.png')
 ```
-<div align=center><img height="320" src="https://github.com/youngxiao/SVM-demo/raw/master/reasult/svm2.png"/></div>
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/contribution_plot_violin_rf.png"/></div>
 
-可以用IPython的 `interact` 函数来看看样本点的分布，会怎么样影响超平面:
+由于随机森林本质上是随机的，对于给定的壳重下的贡献具有可变性。然而，平滑的黑色趋势线仍显示出增长的趋势。与决策树一样，我们看到壳重增加对应于较高的贡献
 ```
-from IPython.html.widgets import interact
+plot_single_feat_contrib('shell weight', rf_reg_contrib, X_test,
+                         class_index=1, add_smooth=True, frac=0.3)
+plt.savefig('plots/shell_weight_contribution_rf.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/shell_weight_contribution_rf.png"/></div>
 
-def plot_svm(N=100):
-    X, y = make_blobs(n_samples=200, centers=2,
-                      random_state=0, cluster_std=0.60)
-    X = X[:N]
-    y = y[:N]
-    clf = SVC(kernel='linear')
-    clf.fit(X, y)
-    plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap='spring')
-    plt.xlim(-1, 4)
-    plt.ylim(-1, 6)
-    plot_svc_decision_function(clf, plt.gca())
-    plt.scatter(clf.support_vectors_[:, 0], clf.support_vectors_[:, 1],
-                s=200, facecolors='none')
+再看看 直径 这个变量，我们具有复杂的、非单调的特点。直径似乎在贡献约0.45下降，在0.3和0.6左右的贡献高峰。除此之外，直径与目标变量 `Rings` 似乎具有普遍的正相关关系。
+```
+plot_single_feat_contrib('diameter', rf_reg_contrib, X_test,
+                         class_index=1, add_smooth=True, frac=0.3)
+plt.savefig('plots/diameter_contribution_rf.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/diameter_contribution_rf.png"/></div>
+
+再看看其他变量
+```
+plot_single_feat_contrib('shucked weight', rf_reg_contrib, X_test,
+                         class_index=1, add_smooth=True, frac=0.3)
+plt.savefig('plots/shucked_weight_contribution_rf.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/shucked_weight_contribution_rf.png"/></div>
+
+如果按照性别来分类 分为 male，female，infant，可以画出每一类的贡献，比如说 infant 这一类
+```
+df, true_label, scores = plot_obs_feature_contrib(dt_multi_clf,
+                                                  dt_multi_clf_contrib,
+                                                  X_test,
+                                                  y_test_multi_clf,
+                                                  3,
+                                                  class_index=2,
+                                                  order_by='contribution',
+                                                  violin=True
+                                                 )
+true_value_list = ['Female', 'Male', 'Infant']
+score_dict = zip(true_value_list, scores)
+title = 'Contributions for Infant Class\nTrue Value: {}\nScores: {}'.format(true_value_list[true_label],
+                                            ', '.join(['{} - {}'.format(i, j) for i, j in score_dict]))
+plt.title(title)
+plt.tight_layout()
+plt.savefig('plots/contribution_plot_violin_multi_clf_dt.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/contribution_plot_violin_multi_clf_dt.png"/></div>
+
+像之前的一样，我们还可以为每个类特征和贡献值的对应图。对于是雌性的鲍鱼，贡献随壳重的增加而增加，而对 infant 的鲍鱼，其贡献随壳重增加而减小。对雄性来说，当壳重超过0.5时，贡献开始增加，然后减少。
+```
+fig, ax = plt.subplots(1, 3, sharey=True)
+fig.set_figwidth(20)
+
+for i in xrange(3):
+    plot_single_feat_contrib('shell weight', rf_multi_clf_contrib, X_test,
+                             class_index=i, class_name=class_names[i],
+                             add_smooth=True, c=colours[i], ax=ax[i])
     
-interact(plot_svm, N=[10, 200], kernel='linear');
+plt.tight_layout()
+plt.savefig('plots/shell_weight_contribution_by_sex_rf.png')
 ```
-<div align=center><img height="320" src="https://github.com/youngxiao/SVM-demo/raw/master/reasult/svm3.png"/></div>
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/shell_weight_contribution_by_sex_rf.png"/></div>
 
 
-
-## Section 2: SVM 与 核函数
-对于非线性可切分的数据集，要做分割，就要借助于核函数了简单一点说呢，核函数可以看做对原始特征的一个映射函数，
-不过SVM不会傻乎乎对原始样本点做映射，它有更巧妙的方式来保证这个过程的高效性。
-下面有一个例子，你可以看到，线性的kernel(线性的SVM)对于这种非线性可切分的数据集，是无能为力的。
-```
-from sklearn.datasets.samples_generator import make_circles
-X, y = make_circles(100, factor=.1, noise=.1)
-
-clf = SVC(kernel='linear').fit(X, y)
-
-plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap='spring')
-plot_svc_decision_function(clf);
-```
-<div align=center><img height="320" src="https://github.com/youngxiao/SVM-demo/raw/master/reasult/svm4.png"/></div>
-
-然后强大的高斯核/radial basis function就可以大显身手了:
-```
-r = np.exp(-(X[:, 0] ** 2 + X[:, 1] ** 2))
-
-from mpl_toolkits import mplot3d
-
-def plot_3D(elev=30, azim=30):
-    ax = plt.subplot(projection='3d')
-    ax.scatter3D(X[:, 0], X[:, 1], r, c=y, s=50, cmap='spring')
-    ax.view_init(elev=elev, azim=azim)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('r')
-
-interact(plot_3D, elev=[-90, 90], azip=(-180, 180));
-```
-<div align=center><img height="320" src="https://github.com/youngxiao/SVM-demo/raw/master/reasult/svm5.png"/></div>
-
-你在上面的图上也可以看到，原本在2维空间无法切分的2类点，映射到3维空间以后，可以由一个平面轻松地切开了。
-而带rbf核的SVM就能帮你做到这一点:
-```
-clf = SVC(kernel='rbf')
-clf.fit(X, y)
-
-plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap='spring')
-plot_svc_decision_function(clf)
-plt.scatter(clf.support_vectors_[:, 0], clf.support_vectors_[:, 1],
-            s=200, facecolors='none');
-```
-<div align=center><img height="320" src="https://github.com/youngxiao/SVM-demo/raw/master/reasult/svm6.png"/></div>
-
-## 关于SVM的总结:
-* 非线性映射是SVM方法的理论基础，SVM利用内积核函数代替向高维空间的非线性映射；
-* 对特征空间划分的最优超平面是SVM的目标，最大化分类边际的思想是SVM方法的核心；
-* 支持向量是SVM的训练结果,在SVM分类决策中起决定作用的是支持向量。因此，模型需要存储空间小，算法鲁棒性强；
-* 无任何前提假设，不涉及概率测度；
-* SVM算法对大规模训练样本难以实施
-* 用SVM解决多分类问题存在困难，经典的支持向量机算法只给出了二类分类的算法，而在数据挖掘的实际应用中，一般要解决多类的分类问题。可以通过多个二类支持向量机的组合来解决。主要有一对多组合模式、一对一组合模式和SVM决策树；再就是通过构造多个分类器的组合来解决。主要原理是克服SVM固有的缺点，结合其他算法的优势，解决多类问题的分类精度。如：与粗集理论结合，形成一种优势互补的多类问题的组合分类器。
-* SVM是O(n^3)的时间复杂度。在sklearn里，LinearSVC是可扩展的(也就是对海量数据也可以支持得不错), 对特别大的数据集SVC就略微有点尴尬了。不过对于特别大的数据集，你倒是可以试试采样一些样本出来，然后用rbf核的SVC来做做分类。
+## 关于随机森林的总结:
+随机森林是一个并行的，典型的高性能的机器学习模型。为了满足的客户的业务需求，我们不仅要提供一个高度预测模型，而且要模型也可以解释。也就是说，不是给他们一个黑盒子，不管模型表现得有多好。特别是对于政府或者金融界的客户。
 
 ## 依赖的 packages
 * matplotlib
-* pylab
+* pandas
 * numpy
 * seaborn
+* treeinterpreter
 
 ## 欢迎关注
 * Github：https://github.com/youngxiao
