@@ -65,7 +65,7 @@ blue, green, red, purple, yellow, cyan = sns.color_palette('colorblind')
 
 
 ## Section 1: 决策树
-决策树通过以贪婪的方式迭代地将数据分成不同的子集。对于回归树，是最小化所有子集中的 MSE（均方误差）或 MAE（平均绝对误差）来选择。对于分类树，通过最小化生成子集中的熵或 Gini 来决定分类。由此产生的分类器将特征空间分隔成不同的子集。
+决策树通过以贪婪的方式迭代地将数据分成不同的子集。对于回归树，是最小化所有子集中的 MSE（均方误差）或 MAE（平均绝对误差）来选择。对于分类树，通过最小化生成子集中的熵或 Gini 来决定分类。由此产生的分类器将特征空间分隔成不同的子集。分别设置深度为 1，2，5，10.
 ```
 light_blue, dark_blue, light_green, dark_green, light_red, dark_red = sns.color_palette('Paired')
 x, z = make_moons(noise=0.20, random_state=5)
@@ -109,34 +109,99 @@ for i in xrange(len(md_list)):
 plt.tight_layout()
 plt.savefig('plots/dt_iterations.png')
 ```
-<div align=center><img height="320" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/reasult/svm1.png"/></div>
+<div align=center><img height="400" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/dt_iterations.png"/></div>
 
 
+导入 abalone 数据。 展示决策树和随机森林回归以及分类如何工作的。我们使用 `Rings` 变量作为连续变量，并从中创建一个二进制变量来表示 `Rings`。
+```
+column_names = ["sex", "length", "diameter", "height", "whole weight", 
+                "shucked weight", "viscera weight", "shell weight", "rings"]
+abalone_df = pd.read_csv('abalone.csv', names=column_names)
+abalone_df['sex'] = abalone_df['sex'].map({'F': 0, 'M': 1, 'I': 2})
+abalone_df['y'] = abalone_df.rings.map(lambda x: 1 if x > 9 else 0)
+abalone_df.head()
+```
+将数据集分为 train 和 test。
+```
+abalone_train, abalone_test = train_test_split(abalone_df, test_size=0.2,
+                                               random_state=0)
 
+X_train = abalone_train.drop(['sex', 'rings', 'y'], axis=1)
+y_train_bin_clf = abalone_train.y
+y_train_multi_clf = abalone_train.sex
+y_train_reg = abalone_train.rings
 
+X_test = abalone_test.drop(['sex', 'rings', 'y'], axis=1)
+y_test_bin_clf = abalone_test.y
+y_test_multi_clf = abalone_test.sex
+y_test_reg = abalone_test.rings
+
+X_train = X_train.copy().reset_index(drop=True)
+y_train_bin_clf = y_train_bin_clf.copy().reset_index(drop=True)
+y_train_multi_clf = y_train_multi_clf.copy().reset_index(drop=True)
+y_train_reg = y_train_reg.copy().reset_index(drop=True)
+
+X_test = X_test.copy().reset_index(drop=True)
+y_test_bin_clf = y_test_bin_clf.copy().reset_index(drop=True)
+y_test_multi_clf = y_test_multi_clf.copy().reset_index(drop=True)
+y_test_reg = y_test_reg.copy().reset_index(drop=True)
+```
+创建简单的决策树和随机森林模型，可以设置决策树的深度来看 interpretation 的用法。
+```
+dt_bin_clf = DecisionTreeClassifier(criterion='entropy', max_depth=3, random_state=0)
+dt_bin_clf.fit(X_train, y_train_bin_clf)
+
+dt_multi_clf = DecisionTreeClassifier(criterion='entropy', max_depth=2, random_state=0)
+dt_multi_clf.fit(X_train, y_train_multi_clf)
+
+dt_reg = DecisionTreeRegressor(criterion='mse', max_depth=3, random_state=0)
+dt_reg.fit(X_train, y_train_reg)
+
+rf_bin_clf = RandomForestClassifier(criterion='entropy', max_depth=10, n_estimators=100, random_state=0)
+rf_bin_clf.fit(X_train, y_train_bin_clf)
+
+rf_multi_clf = RandomForestClassifier(criterion='entropy', max_depth=10,  n_estimators=100, random_state=0)
+rf_multi_clf.fit(X_train, y_train_multi_clf)
+
+rf_reg = RandomForestRegressor(criterion='mse', max_depth=10,  n_estimators=100, random_state=0)
+rf_reg.fit(X_train, y_train_reg)
+```
+创建特征贡献值，用 `ti.predict` 可以得到预测值，偏差项和贡献值. 贡献值矩阵是一个 3D 数组，由每个样本的贡献值，特征和分类标签组成。
+```
+dt_bin_clf_pred, dt_bin_clf_bias, dt_bin_clf_contrib = ti.predict(dt_bin_clf, X_test)
+rf_bin_clf_pred, rf_bin_clf_bias, rf_bin_clf_contrib = ti.predict(rf_bin_clf, X_test)
+
+dt_multi_clf_pred, dt_multi_clf_bias, dt_multi_clf_contrib = ti.predict(dt_multi_clf, X_test)
+rf_multi_clf_pred, rf_multi_clf_bias, rf_multi_clf_contrib = ti.predict(rf_multi_clf, X_test)
+
+dt_reg_pred, dt_reg_bias, dt_reg_contrib = ti.predict(dt_reg, X_test)
+rf_reg_pred, rf_reg_bias, rf_reg_contrib = ti.predict(rf_reg, X_test)
+```
+可视化决策树，利用 `graphviz` 可视化决策树。可以显示到每个叶子节点的路径以及每个节点分类的比例。
+```
+reg_dot_data = export_graphviz(dt_reg,
+                               out_file=None,
+                               feature_names=X_train.columns
+                              )
+reg_graph = pydotplus.graph_from_dot_data(reg_dot_data)
+reg_graph.write_png('plots/reg_dt_path.png')
+Image(reg_graph.create_png())
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/reg_dt_path.png"/></div>
 
 ```
-from sklearn.svm import SVC
-clf = SVC(kernel='linear')
-clf.fit(X, y)
-
-def plot_svc_decision_function(clf, ax=None):
-    """Plot the decision function for a 2D SVC"""
-    if ax is None:
-        ax = plt.gca()
-    x = np.linspace(plt.xlim()[0], plt.xlim()[1], 30)
-    y = np.linspace(plt.ylim()[0], plt.ylim()[1], 30)
-    Y, X = np.meshgrid(y, x)
-    P = np.zeros_like(X)
-    for i, xi in enumerate(x):
-        for j, yj in enumerate(y):
-            P[i, j] = clf.decision_function([xi, yj])
-    # plot the margins
-    ax.contour(X, Y, P, colors='k',
-               levels=[-1, 0, 1], alpha=0.5,
-               linestyles=['--', '-', '--'])
-
+bin_clf_dot_data = export_graphviz(dt_bin_clf,
+                                   out_file=None,
+                                   feature_names=X_train.columns
+                                  )
+bin_clf_graph = pydotplus.graph_from_dot_data(bin_clf_dot_data)
+reg_graph.write_png('plots/bin_clf_dt_path.png')
+Image(bin_clf_graph.create_png())
 ```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/bin_clf_dt_path.png"/></div>
+
+
+
 * 分隔超平面：上述将数据集分割开来的直线叫做分隔超平面。
 * 超平面：如果数据集是N维的，那么就需要N-1维的某对象来对数据进行分割。该对象叫做超平面，也就是分类的决策边界。
 * 间隔：一个点到分割面的距离，称为点相对于分割面的距离。数据集中所有的点到分割面的最小间隔的2倍，称为分类器或数据集的间隔。
