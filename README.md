@@ -189,17 +189,46 @@ Image(reg_graph.create_png())
 ```
 <div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/reg_dt_path.png"/></div>
 
-```
-bin_clf_dot_data = export_graphviz(dt_bin_clf,
-                                   out_file=None,
-                                   feature_names=X_train.columns
-                                  )
-bin_clf_graph = pydotplus.graph_from_dot_data(bin_clf_dot_data)
-reg_graph.write_png('plots/bin_clf_dt_path.png')
-Image(bin_clf_graph.create_png())
-```
-<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/bin_clf_dt_path.png"/></div>
+为了预测鲍鱼的年轮数，决策树将沿着树向下移动，直到它到达一片树叶。每一步将当前子集拆分为两个子集。对于每次分裂，`Rings` 均值变化定义为变量的贡献值，决定怎么分裂。
 
+变量 `dt_reg` 是 sklearn 分类器目标值，`x_test` 表示 Pandas 或 NumPy 数组，包含我们希望得到的预测和贡献值的特征变量。贡献值变量 
+`dt_reg_contrib` 是一个 2D NumPy数组（n_obs，n_features），其中 `n_obs` 观测数，`n_features` 是特征的数量。绘制一个给定鲍鱼的各特征的贡献值，看看哪些特征最影响其预测值。从下面的图中可以看出，这种特定的鲍鱼的重量和长度值对其预测的 `Rings` 有负面影响。
+```
+# Find abalones that are in the left-most leaf
+X_test[(X_test['shell weight'] <= 0.0587) & (X_test['length'] <= 0.2625)].head()
+df, true_label, pred = plot_obs_feature_contrib(dt_reg,
+                                                dt_reg_contrib,
+                                                X_test,
+                                                y_test_reg,
+                                                3,
+                                                order_by='contribution'
+                                               )
+plt.tight_layout()
+plt.savefig('plots/contribution_plot_dt_reg.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/contribution_plot_dt_reg.png"/></div>
+
+可以用 violin 画出这个特定鲍鱼与整个种群的各变量贡献值比较，下图中，可以看出这个特定鲍鱼壳重相较其他相比异常低，事实上，大部分鲍鱼的壳重的权重给出一个正的贡献值。
+```
+df, true_label, score = plot_obs_feature_contrib(dt_reg,
+                                                 dt_reg_contrib,
+                                                 X_test,
+                                                 y_test_reg,
+                                                 3,
+                                                 order_by='contribution',
+                                                 violin=True
+                                                )
+plt.tight_layout()
+plt.savefig('plots/contribution_plot_violin_dt_reg.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/contribution_plot_violin_dt_reg.png"/></div>
+
+以上的描述并没有对一个特定的变量如何影响鲍鱼的 `Rings` 有一个全面的解释。因此，我们可以根据一个特定特征的值绘制给它的贡献值。如果把壳重与它的贡献值进行比较，我们就可以看出随着壳重增加其贡献值增加。
+```
+plot_single_feat_contrib('shell weight', dt_reg_contrib, X_test, class_index=1)
+plt.savefig('plots/shell_weight_contribution_dt.png')
+```
+<div align=center><img height="300" src="https://github.com/youngxiao/Decision-Tree-and-Random-Forests/raw/master/results/shell_weight_contribution_dt.png"/></div>
 
 
 * 分隔超平面：上述将数据集分割开来的直线叫做分隔超平面。
